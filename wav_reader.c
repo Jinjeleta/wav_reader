@@ -7,14 +7,15 @@
 #include "wav_file.h"
 #include "portaudio.h"
 
-#define NUM_SECONDS   (5)
-#define SAMPLE_RATE   (44100)
-#define FRAMES_PER_BUFFER  (64)
 
+#define NUM_SECONDS   (5)
+
+/*
 #ifndef M_PI
 #define M_PI  (3.14159265)
 #endif
-
+*/
+#define FRAMES_PER_BUFFER  (64)
 #define TABLE_SIZE   (200)
 typedef struct
 {
@@ -32,25 +33,44 @@ paTestData;
 static int patestCallback( const void *inputBuffer, void *outputBuffer,
                             unsigned long framesPerBuffer,
                             const PaStreamCallbackTimeInfo* timeInfo,
-                            PaStreamCallbackFlags statusFlags,
-                            void *userData )
+                            PaStreamCallbackFlags statusFlags, 
+                            struct wav_file *userData)
 {
-    paTestData *data = (paTestData*)userData;
+    //paTestData *data = (paTestData*)userData;
     float *out = (float*)outputBuffer;
-    unsigned long i;
+    unsigned long k;
 
     (void) timeInfo; /* Prevent unused variable warnings. */
     (void) statusFlags;
     (void) inputBuffer;
     
-    for( i=0; i<framesPerBuffer; i++ )
+    unsigned int tempLeft = 0;
+    unsigned int tempRight = 0;
+    unsigned long int j = 0;
+    for(k = 0; k < waveData->subChunk3Size; k+=8)
     {
-        *out++ = data->sine[data->left_phase];  /* left */
-        *out++ = data->sine[data->right_phase];  /* right */
-        data->left_phase += 1;
-        if( data->left_phase >= TABLE_SIZE ) data->left_phase -= TABLE_SIZE;
-        data->right_phase += 3; /* higher pitch so we can distinguish left and right. */
-        if( data->right_phase >= TABLE_SIZE ) data->right_phase -= TABLE_SIZE;
+        
+        
+        printf("[ %4.8f ]  [ %4.8f ]\n", uint2float(tempLeft), uint2float(tempRight));
+        fprintf(fp2, "%1.8f\n", uint2float(tempRight));
+    
+    for( k=0; k<framesPerBuffer; k++ )
+    {
+        j = waveData->playProgress;
+        if((j + k + 7) < waveData->subChunk3Size)
+        {
+            tempLeft = waveData->data[j+k+0] | waveData->data[j+k+1]<<8 | waveData->data[j+k+2]<<16 | waveData->data[j+k+3]<<24;
+            tempRight = waveData->data[j+k+4] | waveData->data[j+k+5]<<8 | waveData->data[j+k+6]<<16 | waveData->data[j+k+7]<<24;
+            *out++ = uint2float(tempLeft);
+            *out++ = uint2float(tempRight);
+            waveData->playProgress += 1;
+        }
+        else
+        {
+            *out++ = 0.0;
+            *out++ = 0.0;
+        }
+        
     }
     
     return paContinue;
@@ -59,10 +79,10 @@ static int patestCallback( const void *inputBuffer, void *outputBuffer,
 /*
  * This routine is called by portaudio when playback is done.
  */
-static void StreamFinished( void* userData )
+static void StreamFinished( struct wav_file *userData )
 {
-   paTestData *data = (paTestData *) userData;
-   printf( "Stream Completed: %s\n", data->message );
+   //paTestData *data = (paTestData *) userData;
+   printf( "Stream Completed: ... \n");
 }
 
 int main( int argc, char *argv[] )
@@ -71,6 +91,7 @@ int main( int argc, char *argv[] )
     {
         /* We print argv[0] assuming it is the program name */
         printf( "usage: %s filename\n", argv[0] );
+        return 0;
     }
     else
     {
@@ -81,32 +102,26 @@ int main( int argc, char *argv[] )
         char fileName[] = "sample.wav";
         strcpy ( fileName, argv[1] );
         struct wav_file *waveData = malloc(sizeof *waveData);
+        //-----
         PaStreamParameters outputParameters;
         PaStream *stream;
         PaError err;
-        paTestData data;
+        //paTestData data;
         int i;
         
         readWaveData(fileName, waveData);
         printWaveData(waveData);
-        
-        
-        free(waveData->data);
-        free(waveData);
-        //Last message
-        printf("Program is finished.\n");
-        
-        
-
-        
+           
         printf("PortAudio Test: output sine wave. SR = %d, BufSize = %d\n", SAMPLE_RATE, FRAMES_PER_BUFFER);
         
         /* initialise sinusoidal wavetable */
+        /*
         for( i=0; i<TABLE_SIZE; i++ )
         {
             data.sine[i] = (float) sin( ((double)i/(double)TABLE_SIZE) * M_PI * 2. );
         }
         data.left_phase = data.right_phase = 0;
+        */
         
         err = Pa_Initialize();
         if( err != paNoError ) goto error;
@@ -116,20 +131,32 @@ int main( int argc, char *argv[] )
           fprintf(stderr,"Error: No default output device.\n");
           goto error;
         }
-        outputParameters.channelCount = 2;       /* stereo output */
+        //outputParameters.channelCount = 2;       /* stereo output */
+        outputParameters.channelCount = waveData->numChannels;       /* stereo output */
         outputParameters.sampleFormat = paFloat32; /* 32 bit floating point output */
         outputParameters.suggestedLatency = Pa_GetDeviceInfo( outputParameters.device )->defaultLowOutputLatency;
         outputParameters.hostApiSpecificStreamInfo = NULL;
-
+        
+        /*
         err = Pa_OpenStream(
                   &stream,
-                  NULL, /* no input */
+                  NULL, // no input
                   &outputParameters,
                   SAMPLE_RATE,
                   FRAMES_PER_BUFFER,
-                  paClipOff,      /* we won't output out of range samples so don't bother clipping them */
+                  paClipOff,      // we won't output out of range samples so don't bother clipping them
                   patestCallback,
                   &data );
+        */
+        err = Pa_OpenStream(
+                  &stream,
+                  NULL, // no input
+                  &outputParameters,
+                  waveData->sampleRate,
+                  FRAMES_PER_BUFFER,
+                  paClipOff,      // we won't output out of range samples so don't bother clipping them
+                  patestCallback,
+                  waveData );
         if( err != paNoError ) goto error;
 
         sprintf( data.message, "No Message" );
@@ -151,14 +178,17 @@ int main( int argc, char *argv[] )
         Pa_Terminate();
         printf("Test finished.\n");
         
+        free(waveData->data);
+        free(waveData);
         return err;
     error:
         Pa_Terminate();
+        free(waveData->data);
+        free(waveData);
         fprintf( stderr, "An error occured while using the portaudio stream\n" );
         fprintf( stderr, "Error number: %d\n", err );
         fprintf( stderr, "Error message: %s\n", Pa_GetErrorText( err ) );
         return err;
     }
-    return 0;
 }
 

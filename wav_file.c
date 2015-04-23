@@ -329,6 +329,7 @@ int readWaveData(unsigned char *fileName, struct wav_file *waveData)
         fclose(fp);
         return -2;
     }
+    waveData->playProgress = 0;
     
     //Close the file
     fclose(fp);
