@@ -5,4 +5,4 @@ OBJECT = $(SOURCE:.c=.o)
 $(PROGRAM): $(OBJECT)
 	$(CC) $(CFLAGS) -o $@ $(OBJECT)
 
-wav_reader.o: wav_reader.c
+wav_reader.o: wav_reader.c wav_file.h
