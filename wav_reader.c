@@ -34,7 +34,7 @@ static int patestCallback( const void *inputBuffer, void *outputBuffer,
                             unsigned long framesPerBuffer,
                             const PaStreamCallbackTimeInfo* timeInfo,
                             PaStreamCallbackFlags statusFlags, 
-                            *userData)
+                            void *userData)
 {
     //paTestData *data = (paTestData*)userData;
     struct wav_file *waveData = (struct wav_file*)userData;
@@ -74,7 +74,7 @@ static int patestCallback( const void *inputBuffer, void *outputBuffer,
 /*
  * This routine is called by portaudio when playback is done.
  */
-static void StreamFinished( *userData )
+static void StreamFinished( void *userData )
 {
    //paTestData *data = (paTestData *) userData;
    printf( "Stream Completed: ... \n");
