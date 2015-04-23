@@ -52,13 +52,13 @@ static int patestCallback( const void *inputBuffer, void *outputBuffer,
     for( k=0; k<framesPerBuffer; k++ )
     {
         j = waveData->playProgress;
-        if((j + k + 7) < waveData->subChunk3Size)
+        if((j + 7) < waveData->subChunk3Size)
         {
-            tempLeft = waveData->data[j+k+0] | waveData->data[j+k+1]<<8 | waveData->data[j+k+2]<<16 | waveData->data[j+k+3]<<24;
-            tempRight = waveData->data[j+k+4] | waveData->data[j+k+5]<<8 | waveData->data[j+k+6]<<16 | waveData->data[j+k+7]<<24;
+            tempLeft = waveData->data[j+0] | waveData->data[j+1]<<8 | waveData->data[j+2]<<16 | waveData->data[j+3]<<24;
+            tempRight = waveData->data[j+4] | waveData->data[j+5]<<8 | waveData->data[j+6]<<16 | waveData->data[j+7]<<24;
             *out++ = uint2float(tempLeft);
             *out++ = uint2float(tempRight);
-            waveData->playProgress += 1;
+            waveData->playProgress += 8;
         }
         else
         {
@@ -107,7 +107,7 @@ int main( int argc, char *argv[] )
         readWaveData(fileName, waveData);
         printWaveData(waveData);
            
-        printf("PortAudio Test: output sine wave. SR = %d, BufSize = %d\n", SAMPLE_RATE, FRAMES_PER_BUFFER);
+        printf("PortAudio Test: output sine wave. SR = %d, BufSize = %d\n", waveData->sampleRate, FRAMES_PER_BUFFER);
         
         /* initialise sinusoidal wavetable */
         /*
@@ -127,7 +127,7 @@ int main( int argc, char *argv[] )
           goto error;
         }
         //outputParameters.channelCount = 2;       /* stereo output */
-        outputParameters.channelCount = waveData->numChannels;       /* stereo output */
+        outputParameters.channelCount = 2;       /* stereo output */
         outputParameters.sampleFormat = paFloat32; /* 32 bit floating point output */
         outputParameters.suggestedLatency = Pa_GetDeviceInfo( outputParameters.device )->defaultLowOutputLatency;
         outputParameters.hostApiSpecificStreamInfo = NULL;
@@ -147,14 +147,14 @@ int main( int argc, char *argv[] )
                   &stream,
                   NULL, // no input
                   &outputParameters,
-                  waveData->sampleRate,
+                  8000,
                   FRAMES_PER_BUFFER,
                   paClipOff,      // we won't output out of range samples so don't bother clipping them
                   patestCallback,
                   waveData );
         if( err != paNoError ) goto error;
 
-        sprintf( data.message, "No Message" );
+       // sprintf( data.message, "No Message" );
         err = Pa_SetStreamFinishedCallback( stream, &StreamFinished );
         if( err != paNoError ) goto error;
 
