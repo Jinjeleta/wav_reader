@@ -24,5 +24,11 @@ struct wav_file {
     unsigned int subChunk3Size;                 // all
     unsigned char *data;                        // all
 };
+
+int readWaveData(unsigned char *fileName, struct wav_file *waveData);
+void printWaveData(struct wav_file *waveData);
+float uint2float(unsigned int integer);
+unsigned short char2short(unsigned char *buff);
+unsigned int char2int(unsigned char *buff);
  
 #endif // WAV_FILE_H
