@@ -22,6 +22,7 @@ struct wav_file {
     unsigned int sampleLength;                  // nonPCM and extensible
     unsigned char subChunk3Id[4];               // all    
     unsigned int subChunk3Size;                 // all
+    unsigned long int playProgress;             // all
     unsigned char *data;                        // all
 };
 
